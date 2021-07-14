@@ -2,9 +2,9 @@ package main
 
 import (
 	"context"
-	"geerpc"
-	"geerpc/registry"
-	"geerpc/xclient"
+	"gonrpc"
+	"gonrpc/registry"
+	"gonrpc/xclient"
 	"log"
 	"net"
 	"net/http"
@@ -34,11 +34,11 @@ func startRegistry(wg *sync.WaitGroup) {
 	http.Serve(l, nil)
 }
 
-//启动服务并注册在注册中心
+//启动服务并注册在注册中心，通过端口模拟多集群
 func startServer(registryAddr string, wg *sync.WaitGroup) {
 	var foo Foo
 	l, _ := net.Listen("tcp", ":0")
-	server := geerpc.NewServer()
+	server := gonrpc.NewServer()
 	_ = server.Register(&foo)
 	registry.Heartbeat(registryAddr, "tcp@"+l.Addr().String(), 0)
 	wg.Done()
@@ -50,8 +50,8 @@ func startHTTPServer(registryAddr string, wg *sync.WaitGroup) {
 	defer wg.Done()
 	var foo Foo
 	l, _ := net.Listen("tcp", ":9999")
-	_ = geerpc.Register(&foo)
-	geerpc.HandleHTTP()
+	_ = gonrpc.Register(&foo)
+	gonrpc.HandleHTTP()
 	registry.Heartbeat(registryAddr, "http@"+l.Addr().String(), 0)
 
 	_ = http.Serve(l, nil)
@@ -74,7 +74,7 @@ func foo(xc *xclient.XClient, ctx context.Context, typ, serviceMethod string, ar
 }
 
 func call(registry string) {
-	d := xclient.NewGeeRegistryDiscovery(registry, 0)
+	d := xclient.NewGonRegistryDiscovery(registry, 0)
 	xc := xclient.NewXClient(d, xclient.RandomSelect, nil)
 	defer func() { _ = xc.Close() }()
 
@@ -91,7 +91,7 @@ func call(registry string) {
 }
 
 func broadcast(registry string) {
-	d := xclient.NewGeeRegistryDiscovery(registry, 0)
+	d := xclient.NewGonRegistryDiscovery(registry, 0)
 	xc := xclient.NewXClient(d, xclient.RandomSelect, nil)
 	defer func() { _ = xc.Close() }()
 
@@ -111,20 +111,22 @@ func broadcast(registry string) {
 
 func main() {
 	log.SetFlags(0)
-	registryAddr := "http://localhost:8000/_geerpc_/registry"
+	//注册中心地址
+	registryAddr := "http://localhost:8000/_gonrpc_/registry"
 	var wg sync.WaitGroup
 	wg.Add(1)
 	go startRegistry(&wg)
 	wg.Wait()
-
+	//服务注册
 	wg.Add(2)
 	go startServer(registryAddr, &wg)
 	go startServer(registryAddr, &wg)
 	wg.Wait()
-
+	//开启http服务端
 	wg.Add(1)
 	go startHTTPServer(registryAddr, &wg)
 
+	//
 	call(registryAddr)
 	broadcast(registryAddr)
 	wg.Wait()

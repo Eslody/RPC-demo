@@ -1,5 +1,5 @@
 package codec
-
+//json序列化器
 import (
 	"bufio"
 	"encoding/json"

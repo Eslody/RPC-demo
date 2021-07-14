@@ -12,22 +12,23 @@ import (
 type SelectMode int
 
 const (
-	RandomSelect SelectMode = iota	// select randomly
-	RoundRobinSelect				// select using Robbin algorithm
+	RandomSelect SelectMode = iota			//随机策略
+	RoundRobinSelect						//轮询策略
 )
 
 type Discovery interface {
-	Refresh() error	//从注册中心更新服务列表
-	Update(servers []string) error  //手动更新
-	Get(mode SelectMode) (string, error)  //根据负载均衡策略选择一个服务实例
+	Refresh() error							//从注册中心更新服务列表
+	Update(servers []string) error  		//手动更新
+	Get(mode SelectMode) (string, error)  	//根据负载均衡策略选择一个服务实例
 	GetAll() ([]string, error)
 }
 
+//采用手工维护的服务发现模块
 type MultiServersDiscovery struct {
-	r *rand.Rand  //生成随机数
-	mu sync.RWMutex  //为提高并发量采用读写锁
-	servers []string	//当前可用服务
-	index int //记录轮询算法选择的位置
+	r *rand.Rand  							//生成随机数
+	mu sync.RWMutex  						//为提高并发量采用读写锁
+	servers []string						//当前可用服务
+	index int 								//记录轮询算法选择的位置
 }
 
 func NewMultiServerDiscovery(servers []string) *MultiServersDiscovery{
@@ -38,6 +39,7 @@ func NewMultiServerDiscovery(servers []string) *MultiServersDiscovery{
 	d.index = d.r.Intn(math.MaxInt32 - 1)  //避免每次从0开始，初始化时随机设定一个值
 	return d
 }
+
 //检测实现某接口
 var _ Discovery = (*MultiServersDiscovery)(nil)
 

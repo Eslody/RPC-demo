@@ -1,4 +1,4 @@
-package geerpc
+package gonrpc
 //监控统计
 import (
 	"fmt"
@@ -8,7 +8,7 @@ import (
 
 const debugText = `<html>
 	<body>
-	<title>GeeRPC Services</title>
+	<title>GonRPC Services</title>
 	{{range .}}
 	<hr>
 	Service {{.Name}}
@@ -37,7 +37,6 @@ type debugService struct {
 	Method map[string]*methodType
 }
 
-// Runs at /debug/geerpc
 func (server debugHTTP) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	var services []debugService
 	server.serviceMap.Range(func(namei, svci interface{}) bool {

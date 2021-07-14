@@ -1,5 +1,5 @@
 package registry
-
+//注册中心
 import (
 	"log"
 	"net/http"
@@ -8,47 +8,50 @@ import (
 	"time"
 )
 
-//GeeRegistry 是一个简单的注册中心，实现了服务注册和心跳保活机制
+//GonRegistry 是一个简单的注册中心，实现了服务注册和心跳保活机制
 //返回所有存活的server并更新不可用的server，默认情况5min后服务即进入不可用状态
-type GeeRegistry struct {
+type GonRegistry struct {
 	timeout time.Duration	//超时时间：为0表示不设限制
 	mu sync.Mutex
 	servers map[string]*ServerItem
 }
 
+//服务器地址和起始时间
 type ServerItem struct {
 	Addr string
 	start time.Time
 }
+
 //采用http协议提供服务
 const (
-	defaultPath = "/_geerpc_/registry"
+	defaultPath = "/_gonrpc_/registry"
 	defaultTimeout = time.Minute * 5
 )
 
-func NewRegistry(timeout time.Duration) *GeeRegistry {
-	return &GeeRegistry {
+func NewRegistry(timeout time.Duration) *GonRegistry {
+	return &GonRegistry {
 		timeout: timeout,
 		servers: make(map[string]*ServerItem),
 	}
 }
 
-var DefaultGeeRegistry = NewRegistry(defaultTimeout)
+var DefaultGonRegistry = NewRegistry(defaultTimeout)
 
 //添加服务实例
-func (r *GeeRegistry) putServer(addr string) {
+func (r *GonRegistry) putServer(addr string) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	s := r.servers[addr]
 	if s == nil {
 		r.servers[addr] = &ServerItem{Addr: addr, start: time.Now()}
-	} else {	//若存在则更新起始时间以保活
+	} else {
+		//若存在则更新起始时间以保活
 		s.start = time.Now()
 	}
 }
 
-//返回可用的服务列表
-func (r *GeeRegistry) aliveServers() []string {
+//返回可用的服务列表，格式为服务的地址
+func (r *GonRegistry) aliveServers() []string {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 	var alive []string
@@ -63,7 +66,7 @@ func (r *GeeRegistry) aliveServers() []string {
 }
 
 //在defaultPath处提供服务，为简单所有的信息都放到Header中
-func (r *GeeRegistry) ServeHTTP(w http.ResponseWriter, req *http.Request) {
+func (r *GonRegistry) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	switch req.Method {
 	//返回所有可用的服务列表
 	case "GET":
@@ -81,13 +84,13 @@ func (r *GeeRegistry) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	}
 }
 
-func (r *GeeRegistry) HandleHTTP(registryPath string) {
+func (r *GonRegistry) HandleHTTP(registryPath string) {
 	http.Handle(registryPath, r)
 	log.Println("rpc registry path:", registryPath)
 }
 
 func HandleHTTP() {
-	DefaultGeeRegistry.HandleHTTP(defaultPath)
+	DefaultGonRegistry.HandleHTTP(defaultPath)
 }
 
 //用于注册server/心跳保活，服务启动时定时向注册中心发送心跳

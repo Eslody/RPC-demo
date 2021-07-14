@@ -1,5 +1,5 @@
 package codec
-
+//gob序列化器
 import (
 	"bufio"
 	"encoding/gob"

@@ -1,15 +1,18 @@
 package codec
-
+//序列化器
 import (
 	"io"
 )
 
 type Header struct {
-	ServiceMethod string // format "Service.Method"
-	Seq           uint64 // sequence number chosen by client
+	//格式："Service.Method"
+	//保留方法的原因是要通过反射解析参数
+	ServiceMethod string
+	//客户端发送序列号
+	Seq           uint64
 	Error         string
 }
-//编解码器
+
 type Codec interface {
 	io.Closer
 	ReadHeader(*Header) error

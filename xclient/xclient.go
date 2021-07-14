@@ -2,7 +2,7 @@ package xclient
 
 import (
 	"context"
-	. "geerpc"
+	. "gonrpc"
 	"reflect"
 	"sync"
 )
@@ -12,7 +12,7 @@ type XClient struct {
 	mode SelectMode
 	opt *Option	//需要用户提供option
 	mu sync.Mutex
-	clients map[string]*Client  //protocol@addr - client
+	clients map[string]*Client  //格式：protocol@addr - *client
 }
 
 

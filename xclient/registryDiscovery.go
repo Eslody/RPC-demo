@@ -1,5 +1,5 @@
 package xclient
-
+//支持注册中心的服务发现模块
 import (
 	"log"
 	"net/http"
@@ -7,9 +7,9 @@ import (
 	"time"
 )
 
-type GeeRegistryDiscovery struct {
+type GonRegistryDiscovery struct {
 	*MultiServersDiscovery
-	registry string		//注册中心地址
+	registry string			//注册中心地址
 	timeout time.Duration	//过期时间
 	lastUpdate time.Time	//最后更新时间
 }
@@ -17,11 +17,11 @@ type GeeRegistryDiscovery struct {
 //默认过期时间
 const defaultUpdateTimeout = time.Second * 10
 
-func NewGeeRegistryDiscovery(registryAddr string, timeout time.Duration) *GeeRegistryDiscovery {
+func NewGonRegistryDiscovery(registryAddr string, timeout time.Duration) *GonRegistryDiscovery {
 	if timeout == 0 {
 		timeout = defaultUpdateTimeout
 	}
-	d := &GeeRegistryDiscovery{
+	d := &GonRegistryDiscovery{
 		MultiServersDiscovery: NewMultiServerDiscovery(make([]string, 0)),
 		registry: registryAddr,
 		timeout: timeout,
@@ -29,31 +29,31 @@ func NewGeeRegistryDiscovery(registryAddr string, timeout time.Duration) *GeeReg
 	return d
 }
 
-func (d *GeeRegistryDiscovery) Update(servers []string) error {
+func (d *GonRegistryDiscovery) Update(servers []string) error {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 	d.servers = servers
 	d.lastUpdate = time.Now()
 	return nil
 }
+
 //为保证准确性，先更新后再获取调用server
-func (d *GeeRegistryDiscovery) Get(mode SelectMode) (string, error) {
+func (d *GonRegistryDiscovery) Get(mode SelectMode) (string, error) {
 	if err := d.Refresh(); err != nil {
 		return "", err
 	}
 	return d.MultiServersDiscovery.Get(mode)
 }
 
-func (d *GeeRegistryDiscovery) GetAll() ([]string, error) {
+func (d *GonRegistryDiscovery) GetAll() ([]string, error) {
 	if err := d.Refresh(); err != nil {
 		return nil, err
 	}
 	return d.MultiServersDiscovery.GetAll()
 }
 
-
 //从注册中心处更新servers
-func (d *GeeRegistryDiscovery) Refresh() error {
+func (d *GonRegistryDiscovery) Refresh() error {
 	d.mu.Lock()
 	defer d.mu.Unlock()
 	//未过期直接返回

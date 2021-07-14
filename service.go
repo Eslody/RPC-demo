@@ -1,4 +1,4 @@
-package geerpc
+package gonrpc
 //服务注册
 import (
 	"go/ast"
@@ -23,7 +23,8 @@ func (m *methodType) newArgv() reflect.Value {
 	var argv reflect.Value
 	//argv可能是指针也可能是值
 	if m.ArgType.Kind() == reflect.Ptr {
-		argv = reflect.New(m.ArgType.Elem())//http://c.biancheng.net/view/110.html
+		//Type.Elem()，指向元素的类型
+		argv = reflect.New(m.ArgType.Elem())
 	} else {
 		argv = reflect.New(m.ArgType).Elem()
 	}
@@ -46,9 +47,10 @@ func (m *methodType) newReply() reflect.Value {
 type service struct {
 	name string
 	typ reflect.Type
-	rcvr reflect.Value//指向接收者的一个指针
+	rcvr reflect.Value //指向接收者的一个指针
 	method map[string]*methodType
 }
+
 //传进的参数是Foo的指针
 func newService(rcvr interface{}) *service {
 	s := new(service)
@@ -62,20 +64,28 @@ func newService(rcvr interface{}) *service {
 	return s
 }
 
+//注册方法
 func (s *service) registerMethods() {
 	s.method = make(map[string]*methodType)
 	for i:=0; i<s.typ.NumMethod(); i++ {
 		method := s.typ.Method(i)
 		mType := method.Type
+		//服务注册失败
+		//参数数量不为3，返回值不为1
 		if mType.NumIn() != 3 || mType.NumOut() != 1 {
 			continue
 		}
-		//这里进行了改动!!!服务注册失败
+		//返回值未实现error接口
 		if mType.Out(0) != reflect.TypeOf((*error)(nil)).Elem() {
 			continue
 		}
 		argType, replyType := mType.In(1), mType.In(2)
+		//参数未导出
 		if !isExportedOrBuiltinType(argType) || !isExportedOrBuiltinType(replyType) {
+			continue
+		}
+		//第二个参数不为指针
+		if replyType.Kind() != reflect.Ptr {
 			continue
 		}
 		s.method[method.Name] = &methodType{
@@ -87,11 +97,11 @@ func (s *service) registerMethods() {
 	}
 }
 
-
 func isExportedOrBuiltinType(t reflect.Type) bool {
 	return ast.IsExported(t.Name()) || t.PkgPath() == ""
 }
 
+//service调用方法
 func (s *service) call(m *methodType, argv, reply reflect.Value) error {
 	atomic.AddUint64(&m.numCalls, 1)
 	f := m.method.Func

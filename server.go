@@ -1,12 +1,10 @@
-
+package gonrpc
 //一个server可集成多个service
-package geerpc
-
 import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"geerpc/codec"
+	"gonrpc/codec"
 	"io"
 	"log"
 	"net"
@@ -17,17 +15,18 @@ import (
 	"time"
 )
 
+//魔数，用以确定这个rpc协议请求的类型
 const MagicNumber = 0x3bef5c
 
 const (
-	connected = "200 Connected to GeeRPC"
-	defaultRPCPath   = "/_geeprc_"
-	defaultDebugPath = "/debug/geerpc"
+	connected = "200 Connected to GonRPC"
+	defaultRPCPath   = "/_gonprc_"
+	defaultDebugPath = "/_gonrpc_/debug"
 )
 
 type Option struct {
-	MagicNumber int        // MagicNumber marks this's a geerpc request
-	CodecType   codec.Type // client may choose different Codec to encode body
+	MagicNumber int
+	CodecType   codec.Type //客户端采用的编码方式
 	ConnectTimeout time.Duration  //连接超时
 	HandleTimeout time.Duration  //处理超时
 }
@@ -46,6 +45,7 @@ func NewServer() *Server {
 	return &Server{}
 }
 
+//DefaultServer只是一个方法的调用者，调配的资源由计算机提供
 var DefaultServer = NewServer()
 
 func (server *Server) ServeConn(conn io.ReadWriteCloser) {
@@ -67,17 +67,16 @@ func (server *Server) ServeConn(conn io.ReadWriteCloser) {
 	server.serveCodec(f(conn), opt)
 }
 
-// invalidRequest is a placeholder for response argv when error occurs
 var invalidRequest = struct{}{}
 
 func (server *Server) serveCodec(cc codec.Codec, opt Option) {
 	sending := new(sync.Mutex)
-	wg := new(sync.WaitGroup)  // wait until all request are handled
+	wg := new(sync.WaitGroup)
 	for {//持续等待远程调用
 		req, err := server.readRequest(cc)
 		if err != nil {
 			if req == nil {
-				break // it's not possible to recover, so close the connection
+				break
 			}
 			req.h.Error = err.Error()
 			server.sendResponse(cc, req.h, invalidRequest, sending)
@@ -90,14 +89,12 @@ func (server *Server) serveCodec(cc codec.Codec, opt Option) {
 	_ = cc.Close()
 }
 
-
-// request stores all information of a call
-// 将header+body用codec解析成request
+//将header+body用codec解析成request，对应着Client的Header+Call
 type request struct {
-	h            *codec.Header // header of request
-	argv, reply reflect.Value // argv and replyv of request
-	mType *methodType  //服务方法
-	svc *service  //服务名
+	h  *codec.Header 			//header
+	argv, reply reflect.Value 	//参数和返回值
+	mType *methodType  			//服务方法
+	svc *service  				//服务名
 }
 
 func (server *Server) readRequest(cc codec.Codec) (*request, error) {
@@ -156,6 +153,7 @@ func (server *Server) findService(serviceMethod string) (svc *service, mType *me
 	return
 
 }
+
 //只发送reply
 func (server *Server) sendResponse(cc codec.Codec, h *codec.Header, body interface{}, sending *sync.Mutex) {
 	sending.Lock()
@@ -164,6 +162,7 @@ func (server *Server) sendResponse(cc codec.Codec, h *codec.Header, body interfa
 		log.Println("rpc server: write response error:", err)
 	}
 }
+
 //服务端超时处理
 func (server *Server) handleRequest(cc codec.Codec, req *request, sending *sync.Mutex, wg *sync.WaitGroup, timeout time.Duration) {
 	defer wg.Done()
@@ -181,7 +180,7 @@ func (server *Server) handleRequest(cc codec.Codec, req *request, sending *sync.
 		server.sendResponse(cc, req.h, req.reply.Interface(), sending)
 		sent <- 1
 	}()
-
+	//不限时
 	if timeout == 0 {
 		<-called
 		<-sent
@@ -229,6 +228,7 @@ func (server *Server) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 		_, _ = io.WriteString(w, "405 must CONNECT\n")
 		return
 	}
+	//劫持这个连接，转成tcp-rpc
 	conn, _, err := w.(http.Hijacker).Hijack()
 	if err != nil {
 		log.Print("rpc hijacking ", req.RemoteAddr, ": ", err.Error())
@@ -238,6 +238,7 @@ func (server *Server) ServeHTTP(w http.ResponseWriter, req *http.Request) {
 	server.ServeConn(conn)
 }
 
+//http服务注册
 func (server *Server) HandleHTTP() {
 	http.Handle(defaultRPCPath, server)
 	http.Handle(defaultDebugPath, debugHTTP{server})
