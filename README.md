@@ -1,7 +1,6 @@
 # RPC-demo
-a practice of Go-RPC
 
-一个rpc的demo，节点通信主要基于TCP，序列化方式支持gob、json
+一个参照golang原生官方net/rpc库实现的rpc-demo，节点通信主要基于TCP，序列化方式支持gob、json
 
 通过反射实现服务注册和调用
 
@@ -16,4 +15,4 @@ a practice of Go-RPC
 其中，为提高并发量采用读写锁
 
 相关流程图可见：
-http://localhost:4000/2021/05/14/RPC%E9%A1%B9%E7%9B%AE%E7%9A%84%E6%B5%81%E7%A8%8B%E5%9B%BE/
+https://eslody.github.io/2021/05/14/RPC%E9%A1%B9%E7%9B%AE%E7%9A%84%E6%B5%81%E7%A8%8B%E5%9B%BE/
